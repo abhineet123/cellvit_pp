@@ -10,6 +10,7 @@ pretrained/
 
 # vscode
 .vscode
+.idea/
 
 # cache
 *.pyc

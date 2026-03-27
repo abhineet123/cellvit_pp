@@ -11,5 +11,5 @@ else
 		git.exe commit -m "$1"
 	fi
 fi
-git.exe push origin master
+git.exe push origin main
 
