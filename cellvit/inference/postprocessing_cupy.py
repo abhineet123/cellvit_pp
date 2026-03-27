@@ -25,13 +25,13 @@ from cellvit.training.utils.metrics import remap_label
 
 class DetectionCellPostProcessorCupy:
     def __init__(
-        self,
-        wsi: Union[WSI, WSIMetadata],
-        nr_types: int,
-        resolution: float = 0.25,
-        classifier: nn.Module = None,
-        binary: bool = False,
-        gt: bool = False,
+            self,
+            wsi: Union[WSI, WSIMetadata],
+            nr_types: int,
+            resolution: float = 0.25,
+            classifier: nn.Module = None,
+            binary: bool = False,
+            gt: bool = False,
     ) -> None:
         """DetectionCellPostProcessor for postprocessing prediction maps and get detected cells, based on cupy
 
@@ -39,9 +39,11 @@ class DetectionCellPostProcessorCupy:
             wsi (Union[WSI, WSIMetadata]): WSI object for getting metadata
             nr_types (int):  Number of cell types, including background (background = 0). Defaults to None.
             resolution (float, optional): Resolution of the network/wsi to work on. Defaults to 0.25.
-            classifier (nn.Module, optional): Add a token classifier to change the cell types based on a custom cell classifier. Defaults to None.
+            classifier (nn.Module, optional): Add a token classifier to change the cell types based on a custom cell
+            classifier. Defaults to None.
             binary (bool): If just a binary detection/segmentation should be performed. Defaults to False.
-            gt (bool, optional): If this is gt data (used that we do not suppress tiny cells that may be noise in a prediction map).
+            gt (bool, optional): If this is gt data (used that we do not suppress tiny cells that may be noise in a
+            prediction map).
                 Defaults to False.
 
         Raises:
@@ -80,10 +82,10 @@ class DetectionCellPostProcessorCupy:
         b, h, w, _ = predictions_["nuclei_binary_map"].shape
         assert isinstance(predictions_, dict), "predictions_ must be a dictionary"
         assert (
-            "nuclei_binary_map" in predictions_
+                "nuclei_binary_map" in predictions_
         ), "nuclei_binary_map must be in predictions_"
         assert (
-            "nuclei_type_map" in predictions_
+                "nuclei_type_map" in predictions_
         ), "nuclei_binary_map must be in predictions_"
         assert "hv_map" in predictions_, "nuclei_binary_map must be in predictions_"
         assert predictions_["nuclei_binary_map"].shape == (
@@ -105,8 +107,10 @@ class DetectionCellPostProcessorCupy:
             2,
         ), "hv_map must have shape (B, H, W, 2)"
 
-    def post_process_batch(self, predictions_: dict) -> Tuple[torch.Tensor, List[dict]]:
-        """Post process a batch of predictions and generate cell dictionary and instance predictions for each image in a list
+    def post_process_batch(self, predictions_: dict, threshold: float=0.5,
+) -> Tuple[torch.Tensor, List[dict]]:
+        """Post process a batch of predictions and generate cell dictionary and instance predictions for each image
+        in a list
 
         Args:
             predictions_ (dict): Network predictions with tokens. Keys (required):
@@ -117,8 +121,10 @@ class DetectionCellPostProcessorCupy:
         Returns:
             Tuple[torch.Tensor, List[dict]]:
                 * torch.Tensor: Instance map. Each Instance has own integer. Shape: (B, H, W)
-                * List of dictionaries. Each List entry is one image. Each dict contains another dict for each detected nucleus.
-                    For each nucleus, the following information are returned: "bbox", "centroid", "contour", "type_prob", "type"
+                * List of dictionaries. Each List entry is one image. Each dict contains another dict for each
+                detected nucleus.
+                    For each nucleus, the following information are returned: "bbox", "centroid", "contour",
+                    "type_prob", "type"
         """
         b, h, w, _ = predictions_["nuclei_binary_map"].shape
         # checking
@@ -131,14 +137,16 @@ class DetectionCellPostProcessorCupy:
         cell_dicts = []
         instance_predictions = []
         for i in range(b):
-            pred_inst, cells = self.post_process_single_image(pred_maps[i])
+            pred_inst, cells = self.post_process_single_image(pred_maps[i], threshold=threshold)
             instance_predictions.append(pred_inst)
             cell_dicts.append(cells)
 
         return torch.Tensor(np.stack(instance_predictions)), cell_dicts
 
     def post_process_single_image(
-        self, pred_map: cp.ndarray
+            self,
+            pred_map: cp.ndarray,
+            threshold: float=0.5,
     ) -> Tuple[np.ndarray, dict[int, dict]]:
         """Process one single image and generate cell dictionary and instance predictions
 
@@ -147,7 +155,7 @@ class DetectionCellPostProcessorCupy:
         Returns:
             Tuple[np.ndarray, dict[int, dict]]: _description_
         """
-        pred_inst, pred_type = self._get_pred_inst_tensor(pred_map)
+        pred_inst, pred_type = self._get_pred_inst_tensor(pred_map, threshold=threshold)
         cells = self._create_cell_dict(pred_inst, pred_type)
         return (pred_inst, cells)
 
@@ -185,10 +193,10 @@ class DetectionCellPostProcessorCupy:
         )
 
     def _stack_pred_maps(
-        self,
-        nuclei_type_map: cp.ndarray,
-        nuclei_binary_map: cp.ndarray,
-        hv_map: cp.ndarray,
+            self,
+            nuclei_type_map: cp.ndarray,
+            nuclei_binary_map: cp.ndarray,
+            hv_map: cp.ndarray,
     ) -> cp.ndarray:
         """Creates the prediction map for HoVer-Net post-processing
 
@@ -203,22 +211,22 @@ class DetectionCellPostProcessorCupy:
         """
         # Assert that the shapes of the inputs are as expected
         assert (
-            nuclei_type_map.ndim == 4
+                nuclei_type_map.ndim == 4
         ), "nuclei_type_map must be a 4-dimensional array"
         assert (
-            nuclei_binary_map.ndim == 4
+                nuclei_binary_map.ndim == 4
         ), "nuclei_binary_map must be a 4-dimensional array"
         assert hv_map.ndim == 4, "hv_map must be a 4-dimensional array"
         assert (
-            nuclei_type_map.shape[:-1]
-            == nuclei_binary_map.shape[:-1]
-            == hv_map.shape[:-1]
+                nuclei_type_map.shape[:-1]
+                == nuclei_binary_map.shape[:-1]
+                == hv_map.shape[:-1]
         ), "The first three dimensions of all input arrays must be the same"
         assert (
-            nuclei_binary_map.shape[-1] == 2
+                nuclei_binary_map.shape[-1] == 2
         ), "The last dimension of nuclei_binary_map must have a size of 2"
         assert (
-            hv_map.shape[-1] == 2
+                hv_map.shape[-1] == 2
         ), "The last dimension of hv_map must have a size of 2"
         assert isinstance(
             nuclei_type_map, cp.ndarray
@@ -236,14 +244,15 @@ class DetectionCellPostProcessorCupy:
         )
 
         assert (
-            pred_map.shape[-1] == 4
+                pred_map.shape[-1] == 4
         ), "The last dimension of pred_map must have a size of 4"
 
         return pred_map
 
     def _get_pred_inst_tensor(
-        self,
-        pred_map: cp.ndarray,
+            self,
+            pred_map: cp.ndarray,
+            threshold: float = 0.5,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Process Nuclei Prediction and generate instance map (each instance has unique integer)
 
@@ -258,7 +267,7 @@ class DetectionCellPostProcessorCupy:
         assert isinstance(pred_map, cp.ndarray), "pred_map must be a numpy array"
         assert pred_map.ndim == 3, "pred_map must be a 3-dimensional array"
         assert (
-            pred_map.shape[-1] == 4
+                pred_map.shape[-1] == 4
         ), "The last dimension of pred_map must have a size of 4"
 
         pred_type = pred_map[..., :1]
@@ -266,17 +275,21 @@ class DetectionCellPostProcessorCupy:
         pred_type = pred_type.astype(cp.int32)
 
         pred_inst = cp.squeeze(pred_inst)
-        pred_inst = remap_label(self._proc_np_hv(pred_inst))
+        pred_inst = remap_label(self._proc_np_hv(pred_inst, threshold=threshold))
 
         # return as numpy array
         return pred_inst, pred_type.squeeze().get()
 
     def _proc_np_hv(
-        self, pred_inst: cp.ndarray, object_size: int = 10, ksize: int = 21
+            self, pred_inst: cp.ndarray,
+            object_size: int = 10,
+            ksize: int = 21,
+            threshold: float = 0.5
     ) -> np.ndarray:
         """Process Nuclei Prediction with XY Coordinate Map and generate instance map (each instance has unique integer)
 
-        Separate Instances (also overlapping ones) from binary nuclei map and hv map by using morphological operations and watershed
+        Separate Instances (also overlapping ones) from binary nuclei map and hv map by using morphological
+        operations and watershed
 
         Args:
             pred (cp.ndarray): Prediction output, assuming. Shape: (H, W, 3)
@@ -294,7 +307,7 @@ class DetectionCellPostProcessorCupy:
         assert isinstance(pred_inst, cp.ndarray), "pred_inst must be a numpy array"
         assert pred_inst.ndim == 3, "pred_inst must be a 3-dimensional array"
         assert (
-            pred_inst.shape[2] == 3
+                pred_inst.shape[2] == 3
         ), "The last dimension of pred_inst must have a size of 3"
         assert isinstance(object_size, int), "object_size must be an integer"
         assert object_size > 0, "object_size must be greater than 0"
@@ -307,9 +320,9 @@ class DetectionCellPostProcessorCupy:
         h_dir_raw = pred[..., 1].get()
         v_dir_raw = pred[..., 2].get()
 
-        blb = cp.array(blb_raw >= 0.5, dtype=cp.int32)
+        blb = cp.array(blb_raw >= threshold, dtype=cp.int32)
         blb = label(blb)[0]
-        blb = remove_small_objects_cp(blb, min_size=10)
+        blb = remove_small_objects_cp(blb, min_size=object_size)
         blb[blb > 0] = 1  # background is 0 already
 
         h_dir = cv2.normalize(
@@ -381,7 +394,7 @@ class DetectionCellPostProcessorCupy:
 
     ### Methods related to cell dictionary
     def _create_cell_dict(
-        self, pred_inst: np.ndarray, pred_type: np.ndarray
+            self, pred_inst: np.ndarray, pred_type: np.ndarray
     ) -> dict[int, dict]:
         """Create cell dictionary from instance and type predictions
 
@@ -404,7 +417,7 @@ class DetectionCellPostProcessorCupy:
         assert isinstance(pred_type, np.ndarray), "pred_type must be a numpy array"
         assert pred_type.ndim == 2, "pred_type must be a 2-dimensional array"
         assert (
-            pred_inst.shape == pred_type.shape
+                pred_inst.shape == pred_type.shape
         ), "pred_inst and pred_type must have the same shape"
 
         inst_id_list = np.unique(pred_inst)[1:]  # exlcude background
@@ -420,7 +433,7 @@ class DetectionCellPostProcessorCupy:
         return inst_info_dict
 
     def _create_single_instance_entry(
-        self, inst_id: int, pred_inst: np.ndarray, pred_type: np.ndarray
+            self, inst_id: int, pred_inst: np.ndarray, pred_type: np.ndarray
     ) -> Tuple[int, dict]:
         """Create a single cell dictionary entry from instance and type predictions
 
@@ -475,7 +488,7 @@ class DetectionCellPostProcessorCupy:
         return inst_bbox
 
     def _get_local_instance_map(
-        self, inst_map_global: np.ndarray, inst_bbox: np.ndarray
+            self, inst_map_global: np.ndarray, inst_bbox: np.ndarray
     ) -> np.ndarray:
         """Get the local instance map from the global instance map, crop it with the bounding box
 
@@ -487,13 +500,13 @@ class DetectionCellPostProcessorCupy:
             np.ndarray: Local instance map. Shape: (H', W')
         """
         inst_map_local = inst_map_global[
-            inst_bbox[0][0] : inst_bbox[1][0], inst_bbox[0][1] : inst_bbox[1][1]
-        ]
+                         inst_bbox[0][0]: inst_bbox[1][0], inst_bbox[0][1]: inst_bbox[1][1]
+                         ]
         inst_map_local = inst_map_local.astype(np.uint8)
         return inst_map_local
 
     def _get_instance_centroid_contour(
-        self, inst_map_local: np.ndarray
+            self, inst_map_local: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Get the centroid and contour of an instance from the local instance map
 
@@ -525,7 +538,7 @@ class DetectionCellPostProcessorCupy:
         return inst_centroid, inst_contour
 
     def _correct_instance_position(
-        self, inst_centroid: np.ndarray, inst_contour: np.ndarray, inst_bbox: np.ndarray
+            self, inst_centroid: np.ndarray, inst_contour: np.ndarray, inst_bbox: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Correct the position of the centroid and contour of an instance to the global image
 
@@ -547,7 +560,7 @@ class DetectionCellPostProcessorCupy:
         return inst_centroid, inst_contour
 
     def _get_instance_type(
-        self, inst_bbox: np.ndarray, pred_type: np.ndarray, inst_map_local: np.ndarray
+            self, inst_bbox: np.ndarray, pred_type: np.ndarray, inst_map_local: np.ndarray
     ) -> Tuple[int, float]:
         """Get the type of an instance from the local instance map and the type prediction map
 
@@ -563,8 +576,8 @@ class DetectionCellPostProcessorCupy:
         """
         inst_map_local = inst_map_local.astype(bool)
         inst_type_local = pred_type[
-            inst_bbox[0][0] : inst_bbox[1][0], inst_bbox[0][1] : inst_bbox[1][1]
-        ][inst_map_local]
+                          inst_bbox[0][0]: inst_bbox[1][0], inst_bbox[0][1]: inst_bbox[1][1]
+                          ][inst_map_local]
         type_list, type_pixels = np.unique(inst_type_local, return_counts=True)
         type_list = list(zip(type_list, type_pixels))
         type_list = sorted(type_list, key=lambda x: x[1], reverse=True)
@@ -583,38 +596,41 @@ class DetectionCellPostProcessorCupy:
 @ray.remote(num_cpus=8, num_gpus=0.1)
 class BatchPoolingActor:
     def __init__(
-        self,
-        detection_cell_postprocessor: DetectionCellPostProcessorCupy,
-        run_conf: dict,
+            self,
+            detection_cell_postprocessor: DetectionCellPostProcessorCupy,
+            run_conf: dict,
     ) -> None:
         """Ray Actor for coordinating the postprocessing of **one** batch
 
         The postprocessing is done in a separate process to avoid blocking the main process.
         The calculation is done with the help of the `DetectionCellPostProcessorCupy` class.
-        This actor acts as a coordinator for the postprocessing of one batch and a wrapper for the `DetectionCellPostProcessorCupy` class.
+        This actor acts as a coordinator for the postprocessing of one batch and a wrapper for the
+        `DetectionCellPostProcessorCupy` class.
 
         Args:
-            detection_cell_postprocessor (DetectionCellPostProcessorCupy): Instance of the `DetectionCellPostProcessorCupy` class
+            detection_cell_postprocessor (DetectionCellPostProcessorCupy): Instance of the
+            `DetectionCellPostProcessorCupy` class
             run_conf (dict): Run configuration
         """
         assert "dataset_config" in run_conf, "dataset_config must be in run_conf"
         assert (
-            "nuclei_types" in run_conf["dataset_config"]
+                "nuclei_types" in run_conf["dataset_config"]
         ), "nuclei_types must be in run_conf['dataset_config']"
         assert "model" in run_conf, "model must be in run_conf"
         assert (
-            "token_patch_size" in run_conf["model"]
+                "token_patch_size" in run_conf["model"]
         ), "token_patch_size must be in run_conf['model']"
 
         self.detection_cell_postprocessor = detection_cell_postprocessor
         self.run_conf = run_conf
 
     def convert_batch_to_graph_nodes(
-        self, predictions: dict, metadata: List[dict]
+            self, predictions: dict, metadata: List[dict]
     ) -> Tuple[List[dict], List[dict], List[torch.Tensor], List[torch.Tensor]]:
         """Postprocess a batch of predictions and convert it to graph nodes
 
-        Returns the complete graph nodes (cell dictionary), the detection nodes (cell detection dictionary), the cell tokens and the cell positions
+        Returns the complete graph nodes (cell dictionary), the detection nodes (cell detection dictionary),
+        the cell tokens and the cell positions
 
 
         Args:
@@ -646,7 +662,7 @@ class BatchPoolingActor:
         batch_cell_positions = []
 
         for idx, (patch_cell_dict, patch_metadata) in enumerate(
-            zip(cell_dict_batch, metadata)
+                zip(cell_dict_batch, metadata)
         ):
             (
                 patch_complete,
@@ -688,7 +704,7 @@ class BatchPoolingActor:
         return batch_complete, batch_detection, batch_cell_tokens, batch_cell_positions
 
     def convert_patch_to_graph_nodes(
-        self, patch_cell_dict: dict, patch_metadata: dict, patch_tokens: torch.Tensor
+            self, patch_cell_dict: dict, patch_metadata: dict, patch_tokens: torch.Tensor
     ) -> Tuple[List[dict], List[dict], List[torch.Tensor], List[torch.Tensor]]:
         """Extract information from a single patch and convert it to graph nodes for a global view
 
@@ -740,8 +756,8 @@ class BatchPoolingActor:
         # extract cell information
         for cell in patch_cell_dict.values():
             if (
-                cell["type"]
-                == self.run_conf["dataset_config"]["nuclei_types"]["Background"]
+                    cell["type"]
+                    == self.run_conf["dataset_config"]["nuclei_types"]["Background"]
             ):
                 continue
             offset_global = np.array([x_global, y_global])
@@ -769,8 +785,8 @@ class BatchPoolingActor:
                 "type": cell["type"],
             }
             if (
-                np.max(cell["bbox"]) == wsi.metadata["patch_size"]
-                or np.min(cell["bbox"]) == 0
+                    np.max(cell["bbox"]) == wsi.metadata["patch_size"]
+                    or np.min(cell["bbox"]) == 0
             ):  # Use overlap and patch size
                 position = get_cell_position(cell["bbox"], wsi.metadata["patch_size"])
                 cell_dict["edge_position"] = True
@@ -787,8 +803,8 @@ class BatchPoolingActor:
             bb_index[1, :] = np.ceil(bb_index[1, :])
             bb_index = bb_index.astype(np.uint8)
             cell_token = patch_tokens[
-                :, bb_index[0, 0] : bb_index[1, 0], bb_index[0, 1] : bb_index[1, 1]
-            ]
+                         :, bb_index[0, 0]: bb_index[1, 0], bb_index[0, 1]: bb_index[1, 1]
+                         ]
             cell_token = torch.mean(rearrange(cell_token, "D H W -> (H W) D"), dim=0)
 
             cell_tokens.append(cell_token)
@@ -833,7 +849,7 @@ def get_cell_position(bbox: np.ndarray, patch_size: int = 1024) -> List[int]:
 
 
 def get_cell_position_marging(
-    bbox: np.ndarray, patch_size: int = 1024, margin: int = 64
+        bbox: np.ndarray, patch_size: int = 1024, margin: int = 64
 ) -> int:
     """Get the status of the cell, describing the cell position
 

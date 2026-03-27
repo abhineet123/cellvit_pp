@@ -449,6 +449,7 @@ class CellViTInference:
                 else:
                     predictions = self.model.forward(patches, retrieve_tokens=True)
                 predictions = self.apply_softmax_reorder(predictions)
+
                 call_id = batch_actor.convert_batch_to_graph_nodes.remote(
                     predictions, metadata
                 )
